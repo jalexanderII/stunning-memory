@@ -19,12 +19,5 @@ bin/
 tmp/
 .air.toml
 
-# Database
-api.db/
-api.db
-*.db
-*.db~
-
 # IDL
 .idea
-identifier.sqlite
