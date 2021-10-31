@@ -2,21 +2,21 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jalexanderII/stunning-memory/config"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/routes"
+	"log"
 )
 
-func welcome(c *fiber.Ctx) error {
-	return c.SendString("Hello, World!")
-}
-
 func main() {
-	database.ConnectDb()
-
 	app := fiber.New()
+	app.Use(cors.New())
 
-	app.Get("/", welcome)
+	database.ConnectDb()
+	routes.SetupRoutes(app)
 
 	config.Logger.Info("Connecting to server")
-	app.Listen(":9092")
+	log.Fatal(app.Listen(":9092"))
+
 }

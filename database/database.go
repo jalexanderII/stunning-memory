@@ -5,6 +5,7 @@ import (
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // DbInstance is a struct that holds database pointer
@@ -22,7 +23,7 @@ func ConnectDb() {
 		dbLogger.Error("failed to connect database", "error", err)
 	}
 	dbLogger.Info("Connecting to database")
-
+	db.Logger = logger.Default.LogMode(logger.Info)
 	// Migrate the schema
 	dbLogger.Info("Running Migrations")
 	db.AutoMigrate(&models.Order{}, &models.Order{}, &models.Product{})
