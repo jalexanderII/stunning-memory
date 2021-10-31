@@ -21,6 +21,7 @@ tmp/
 
 # Database
 api.db
+*.db
 
 # IDL
 .idea
