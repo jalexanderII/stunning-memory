@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
 	"github.com/jalexanderII/stunning-memory/models"
-	"gorm.io/gorm/clause"
 )
 
 // Product To be used as a serializer
@@ -121,7 +120,7 @@ func DeleteProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	if err := database.Database.Db.Clauses(clause.Returning{}).Where("id = ?", id).Delete(&product).Error; err != nil {
+	if err := database.Database.Db.Where("id = ?", id).Delete(&product).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 	responseProduct := CreateResponseProduct(product)
