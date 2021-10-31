@@ -4,16 +4,17 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/gorm/clause"
 )
 
 // Product To be used as a serializer
 type Product struct {
-	ID    uint    `json:"id"`
-	Name  string  `json:"name"`
-	Sku       string `json:"sku"`
-	Price     uint   `json:"price"`
+	ID    uint   `json:"id"`
+	Name  string `json:"name" validate:"required"`
+	Sku   string `json:"sku"`
+	Price uint   `json:"price" validate:"required,number"`
 }
 
 // CreateResponseProduct Takes in a model and returns a serializer
@@ -22,15 +23,19 @@ func CreateResponseProduct(productModel models.Product) Product {
 }
 
 type UpdateProductResponse struct {
-	Name  string  `json:"name"`
-	Sku       string `json:"sku"`
-	Price     uint   `json:"price"`
+	Name  string `json:"name"`
+	Sku   string `json:"sku"`
+	Price uint   `json:"price"`
 }
 
 func CreateProduct(c *fiber.Ctx) error {
 	var product models.Product
 	if err := c.BodyParser(&product); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	errs := middleware.ValidateStruct(product)
+	if errs != nil {
+		return c.JSON(errs)
 	}
 	database.Database.Db.Create(&product)
 	responseProduct := CreateResponseProduct(product)

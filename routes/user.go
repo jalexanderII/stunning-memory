@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/gorm/clause"
 )
@@ -11,8 +12,8 @@ import (
 // User To be used as a serializer
 type User struct {
 	ID    uint    `json:"id"`
-	Name  string  `json:"name"`
-	Email *string `json:"email"`
+	Name  string  `json:"name" validate:"required"`
+	Email *string `json:"email" validate:"required,email"`
 }
 
 // CreateResponseUser Takes in a model and returns a serializer
@@ -21,14 +22,18 @@ func CreateResponseUser(userModel models.User) User {
 }
 
 type UpdateUserResponse struct {
-	Name string `json:"name"`
-	Email   *string `json:"email"`
+	Name  string  `json:"name"`
+	Email *string `json:"email"`
 }
 
 func CreateUser(c *fiber.Ctx) error {
 	var user models.User
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	errs := middleware.ValidateStruct(user)
+	if errs != nil {
+		return c.JSON(errs)
 	}
 	database.Database.Db.Create(&user)
 	responseUser := CreateResponseUser(user)

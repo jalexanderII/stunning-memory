@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jalexanderII/stunning-memory/config"
 	"github.com/jalexanderII/stunning-memory/database"
@@ -11,7 +12,7 @@ import (
 
 func main() {
 	app := fiber.New()
-	app.Use(cors.New())
+	app.Use(cors.New(), cache.New())
 
 	database.ConnectDb()
 	routes.SetupRoutes(app)

@@ -4,14 +4,15 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"time"
 )
 
 type Order struct {
 	ID        uint      `json:"id"`
-	User      User      `json:"user"`
-	Product   Product   `json:"product"`
+	User      User      `json:"user" validate:"required"`
+	Product   Product   `json:"product" validate:"required"`
 	CreatedAt time.Time `json:"order_date"`
 }
 
@@ -26,6 +27,10 @@ func CreateOrder(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&order); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	}
+	errs := middleware.ValidateStruct(order)
+	if errs != nil {
+		return c.JSON(errs)
 	}
 
 	if err := findUser(order.UserRef, &user); err != nil {
