@@ -2,9 +2,11 @@ package routes
 
 import (
 	"errors"
+
+	"github.com/jalexanderII/stunning-memory/middleware"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
-	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/gorm/clause"
 )
@@ -13,32 +15,35 @@ import (
 type Product struct {
 	ID    uint   `json:"id"`
 	Name  string `json:"name" validate:"required"`
-	Sku   string `json:"sku"`
-	Price uint   `json:"price" validate:"required,number"`
+	SKU   string `json:"sku" validate:"required,sku"`
+	Price uint   `json:"price" validate:"gte=0"`
 }
 
 // CreateResponseProduct Takes in a model and returns a serializer
 func CreateResponseProduct(productModel models.Product) Product {
-	return Product{ID: productModel.ID, Name: productModel.Name, Sku: productModel.Sku, Price: productModel.Price}
+	return Product{ID: productModel.ID, Name: productModel.Name, SKU: productModel.SKU, Price: productModel.Price}
 }
 
 type UpdateProductResponse struct {
 	Name  string `json:"name"`
-	Sku   string `json:"sku"`
+	SKU   string `json:"sku"`
 	Price uint   `json:"price"`
 }
 
 func CreateProduct(c *fiber.Ctx) error {
 	var product models.Product
 	if err := c.BodyParser(&product); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": err.Error(),
+		})
 	}
-	errs := middleware.ValidateStruct(product)
+	responseProduct := CreateResponseProduct(product)
+	errs := middleware.ValidateStruct(&responseProduct)
 	if errs != nil {
 		return c.JSON(errs)
 	}
 	database.Database.Db.Create(&product)
-	responseProduct := CreateResponseProduct(product)
+	responseProduct.ID = product.ID
 
 	return c.Status(fiber.StatusOK).JSON(responseProduct)
 }
@@ -97,7 +102,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 
 	product.Name = updateProductResponse.Name
-	product.Sku = updateProductResponse.Sku
+	product.SKU = updateProductResponse.SKU
 	product.Price = updateProductResponse.Price
 	database.Database.Db.Save(&product)
 

@@ -2,9 +2,11 @@ package routes
 
 import (
 	"errors"
+
+	"github.com/jalexanderII/stunning-memory/middleware"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
-	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/gorm/clause"
 )
@@ -29,14 +31,18 @@ type UpdateUserResponse struct {
 func CreateUser(c *fiber.Ctx) error {
 	var user models.User
 	if err := c.BodyParser(&user); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": err.Error(),
+		})
 	}
-	errs := middleware.ValidateStruct(user)
+	responseUser := CreateResponseUser(user)
+	errs := middleware.ValidateStruct(&responseUser)
 	if errs != nil {
 		return c.JSON(errs)
 	}
+
 	database.Database.Db.Create(&user)
-	responseUser := CreateResponseUser(user)
+	responseUser.ID = user.ID
 
 	return c.Status(fiber.StatusOK).JSON(responseUser)
 }

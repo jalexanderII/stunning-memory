@@ -2,17 +2,19 @@ package routes
 
 import (
 	"errors"
+	"time"
+
+	"github.com/jalexanderII/stunning-memory/middleware"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
-	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
-	"time"
 )
 
 type Order struct {
 	ID        uint      `json:"id"`
-	User      User      `json:"user" validate:"required"`
-	Product   Product   `json:"product" validate:"required"`
+	User      User      `json:"user" validate:"dive"`
+	Product   Product   `json:"product" validate:"dive"`
 	CreatedAt time.Time `json:"order_date"`
 }
 
@@ -26,13 +28,10 @@ func CreateOrder(c *fiber.Ctx) error {
 	var product models.Product
 
 	if err := c.BodyParser(&order); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": err.Error(),
+		})
 	}
-	errs := middleware.ValidateStruct(order)
-	if errs != nil {
-		return c.JSON(errs)
-	}
-
 	if err := findUser(order.UserRef, &user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
@@ -41,12 +40,17 @@ func CreateOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	database.Database.Db.Create(&order)
 	responseOrder := CreateResponseOrder(
 		order,
 		CreateResponseUser(user),
 		CreateResponseProduct(product),
 	)
+	errs := middleware.ValidateStruct(&responseOrder)
+	if errs != nil {
+		return c.JSON(errs)
+	}
+	database.Database.Db.Create(&order)
+	responseOrder.ID = order.ID
 
 	return c.Status(fiber.StatusOK).JSON(responseOrder)
 }
