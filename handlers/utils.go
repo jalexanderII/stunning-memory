@@ -64,9 +64,13 @@ func HashPassword(password string) (string, error) {
 func ValidUser(id int, p string) bool {
 	var user models.User
 	database.Database.Db.First(&user, id)
+	if user.Password == "" {
+		return true
+	}
 	if user.Username == "" {
 		return false
 	}
+
 	if !CheckPasswordHash(p, user.Password) {
 		return false
 	}

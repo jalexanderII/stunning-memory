@@ -131,19 +131,28 @@ func UpdateUser(c *fiber.Ctx) error {
 }
 
 func DeleteUser(c *fiber.Ctx) error {
+	type DeleteUser struct {
+		Password string `json:"password"`
+	}
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON("Please ensure id is and uint")
 	}
-	var user models.User
+
+	var deleteUser DeleteUser
 	if err := CheckToken(c); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
-
-	if !ValidUser(id, user.Password) {
+	if err := c.BodyParser(&deleteUser); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+	if !ValidUser(id, deleteUser.Password) {
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Not valid user", "data": nil})
 	}
-
+	
+	var user models.User
 	if err := database.Database.Db.Clauses(clause.Returning{}).Where("id = ?", id).Delete(&user).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
