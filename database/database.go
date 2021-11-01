@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/jalexanderII/stunning-memory/config"
+	"github.com/hashicorp/go-hclog"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -16,13 +16,13 @@ type DbInstance struct {
 var Database DbInstance
 
 func ConnectDb() {
-	dbLogger := config.Logger.Named("database")
+	dbLogger := hclog.Default()
 
 	db, err := gorm.Open(sqlite.Open("api.db"), &gorm.Config{})
 	if err != nil {
 		dbLogger.Error("failed to connect database", "error", err)
 	}
-	dbLogger.Info("Connecting to database")
+	dbLogger.Info("Connection Opened to Database")
 	db.Logger = logger.Default.LogMode(logger.Info)
 	// Migrate the schema
 	dbLogger.Info("Running Migrations")

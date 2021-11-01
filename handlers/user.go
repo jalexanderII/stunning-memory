@@ -1,47 +1,58 @@
-package routes
+package handlers
 
 import (
 	"errors"
 
-	"github.com/jalexanderII/stunning-memory/middleware"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 	"gorm.io/gorm/clause"
 )
 
 // User To be used as a serializer
 type User struct {
-	ID    uint    `json:"id"`
-	Name  string  `json:"name" validate:"required"`
-	Email *string `json:"email" validate:"required,email"`
+	ID       uint   `json:"id"`
+	Name     string `json:"name" validate:"required"`
+	Username string `json:"username"`
+	Email    string `json:"email" validate:"required,email"`
 }
 
 // CreateResponseUser Takes in a model and returns a serializer
 func CreateResponseUser(userModel models.User) User {
-	return User{ID: userModel.ID, Name: userModel.Name, Email: userModel.Email}
-}
-
-type UpdateUserResponse struct {
-	Name  string  `json:"name"`
-	Email *string `json:"email"`
+	return User{ID: userModel.ID, Name: userModel.Name, Username: userModel.Username, Email: userModel.Email}
 }
 
 func CreateUser(c *fiber.Ctx) error {
 	var user models.User
+
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
 		})
 	}
+	hash, err := HashPassword(user.Password)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Couldn't hash password", "data": err})
+
+	}
+	user.Password = hash
+
 	responseUser := CreateResponseUser(user)
 	errs := middleware.ValidateStruct(&responseUser)
 	if errs != nil {
-		return c.JSON(errs)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": errs,
+		})
 	}
 
-	database.Database.Db.Create(&user)
+	if err := database.Database.Db.Create(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Couldn't create user", "data": err.Error()})
+	}
 	responseUser.ID = user.ID
 
 	return c.Status(fiber.StatusOK).JSON(responseUser)
@@ -83,6 +94,12 @@ func GetUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responseUser)
 }
 
+type UpdateUserResponse struct {
+	Name     string `json:"name" validate:"required"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
 func UpdateUser(c *fiber.Ctx) error {
 	var user models.User
 	var updateUserResponse UpdateUserResponse
@@ -90,6 +107,10 @@ func UpdateUser(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON("Please ensure id is and uint")
+	}
+
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
 
 	if err = findUser(id, &user); err != nil {
@@ -101,6 +122,7 @@ func UpdateUser(c *fiber.Ctx) error {
 	}
 
 	user.Name = updateUserResponse.Name
+	user.Username = updateUserResponse.Username
 	user.Email = updateUserResponse.Email
 	database.Database.Db.Save(&user)
 
@@ -114,9 +136,12 @@ func DeleteUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Please ensure id is and uint")
 	}
 	var user models.User
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
 
-	if err := findUser(id, &user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	if !ValidUser(id, user.Password) {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Not valid user", "data": nil})
 	}
 
 	if err := database.Database.Db.Clauses(clause.Returning{}).Where("id = ?", id).Delete(&user).Error; err != nil {

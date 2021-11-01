@@ -1,13 +1,12 @@
-package routes
+package handlers
 
 import (
 	"errors"
 	"time"
 
-	"github.com/jalexanderII/stunning-memory/middleware"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 )
 
@@ -26,6 +25,10 @@ func CreateOrder(c *fiber.Ctx) error {
 	var order models.Order
 	var user models.User
 	var product models.Product
+
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
 
 	if err := c.BodyParser(&order); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

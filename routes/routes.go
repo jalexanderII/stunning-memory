@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
-	"github.com/gofiber/fiber/v2/middleware/timeout"
-	"time"
+	"github.com/jalexanderII/stunning-memory/handlers"
+	"github.com/jalexanderII/stunning-memory/middleware"
 )
 
 func welcome(c *fiber.Ctx) error {
@@ -12,26 +12,35 @@ func welcome(c *fiber.Ctx) error {
 }
 
 func SetupRoutes(app *fiber.App){
-	// monitoring api stats
-	app.Get("/dashboard", monitor.New())
-	// entrypoint
 	app.Get("/", welcome)
-	// User endpoints
 	api := app.Group("/api")
-	api.Post("/users", CreateUser)
-	api.Get("/users", timeout.New(GetUsers, 5 * time.Second))
-	api.Get("/users/:id", GetUser)
-	api.Put("/users/:id", UpdateUser)
-	api.Delete("/users/:id", DeleteUser)
+
+	// monitoring api stats
+	api.Get("/dashboard", monitor.New())
+
+	// Auth
+	auth := api.Group("/auth")
+	auth.Get("/token/new", handlers.GetNewAccessToken)
+	auth.Post("/login", handlers.Login)
+
+	// User endpoints
+	users := api.Group("/users")
+	users.Post("/", handlers.CreateUser)
+	users.Get("/", handlers.GetUsers)
+	users.Get("/:id", handlers.GetUser)
+	users.Patch("/:id",  middleware.Protected(), handlers.UpdateUser)
+	users.Delete("/:id", middleware.Protected(), handlers.DeleteUser)
 	// Product endpoints
-	api.Post("/products", CreateProduct)
-	api.Get("/products", timeout.New(GetProducts, 5 * time.Second))
-	api.Get("/products/:id", GetProduct)
-	api.Put("/products/:id", UpdateProduct)
-	api.Delete("/products/:id", DeleteProduct)
+	products := api.Group("/products")
+	products.Get("/", handlers.GetProducts)
+	products.Get("/:id", handlers.GetProduct)
+	products.Post("/",  middleware.Protected(), handlers.CreateProduct)
+	products.Patch("/:id",  middleware.Protected(), handlers.UpdateProduct)
+	products.Delete("/:id",  middleware.Protected(), handlers.DeleteProduct)
 	// Order endpoints
-	api.Post("/orders", CreateOrder)
-	api.Get("/orders", timeout.New(GetOrders, 5 * time.Second))
-	api.Get("/orders/:id", GetOrder)
+	orders := api.Group("/orders")
+	orders.Get("/", handlers.GetOrders)
+	orders.Get("/:id", handlers.GetOrder)
+	orders.Post("/",  middleware.Protected(), handlers.CreateOrder)
 }
 

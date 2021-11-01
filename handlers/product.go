@@ -1,12 +1,11 @@
-package routes
+package handlers
 
 import (
 	"errors"
 
-	"github.com/jalexanderII/stunning-memory/middleware"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jalexanderII/stunning-memory/database"
+	"github.com/jalexanderII/stunning-memory/middleware"
 	"github.com/jalexanderII/stunning-memory/models"
 )
 
@@ -31,6 +30,11 @@ type UpdateProductResponse struct {
 
 func CreateProduct(c *fiber.Ctx) error {
 	var product models.Product
+
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+
 	if err := c.BodyParser(&product); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": err.Error(),
@@ -92,6 +96,9 @@ func UpdateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Please ensure id is and uint")
 	}
 
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
 	if err = findProduct(id, &product); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
@@ -114,15 +121,16 @@ func DeleteProduct(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON("Please ensure id is and uint")
 	}
+	if err := CheckToken(c); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+
 	var product models.Product
 
-	if err := findProduct(id, &product); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	database.Database.Db.First(&product, id)
+	if product.Name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "No product found with ID", "data": nil})
 	}
-
-	if err := database.Database.Db.Where("id = ?", id).Delete(&product).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
-	}
-	responseProduct := CreateResponseProduct(product)
-	return c.Status(fiber.StatusOK).JSON(responseProduct)
+	database.Database.Db.Delete(&product)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Product successfully deleted", "data": nil})
 }
