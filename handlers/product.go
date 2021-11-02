@@ -53,9 +53,9 @@ func CreateProduct(c *fiber.Ctx) error {
 
 func GetProducts(c *fiber.Ctx) error {
 	var products []models.Product
-	responseProducts := make([]Product, len(products))
-
 	database.Database.Db.Find(&products)
+
+	responseProducts := make([]Product, len(products))
 	for _, product := range products {
 		responseProducts = append(responseProducts, CreateResponseProduct(product))
 	}
